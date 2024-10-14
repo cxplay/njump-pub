@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"html"
 	"html/template"
-	"math/rand"
 	"net/http"
 	"regexp"
 	"slices"
@@ -21,7 +20,6 @@ import (
 
 	"github.com/nbd-wtf/go-nostr"
 	"github.com/nbd-wtf/go-nostr/nip19"
-	"github.com/nbd-wtf/go-nostr/sdk"
 )
 
 const (
@@ -181,43 +179,6 @@ func getPreviewStyle(r *http.Request) Style {
 	}
 }
 
-func attachRelaysToEvent(eventId string, relays ...string) []string {
-	key := "rls:" + eventId
-	existingRelays := make([]string, 0, 10)
-	if exists := cache.GetJSON(key, &existingRelays); exists {
-		relays = unique(append(existingRelays, relays...))
-	}
-
-	// cleanup
-	filtered := make([]string, 0, len(relays))
-	for _, relay := range relays {
-		if sdk.IsVirtualRelay(relay) {
-			continue
-		}
-		filtered = append(filtered, relay)
-	}
-
-	cache.SetJSONWithTTL(key, filtered, time.Hour*24*7)
-	return filtered
-}
-
-func getRelaysForEvent(eventId string) []string {
-	key := "rls:" + eventId
-	relays := make([]string, 0, 10)
-	cache.GetJSON(key, &relays)
-	return relays
-}
-
-func scheduleEventExpiration(id string, ts time.Duration) {
-	key := "ttl:" + id
-	nextExpiration := time.Now().Add(ts).Unix()
-	var currentExpiration int64
-	if exists := cache.GetJSON(key, &currentExpiration); exists {
-		return
-	}
-	cache.SetJSON(key, nextExpiration)
-}
-
 func replaceURLsWithTags(input string, imageReplacementTemplate, videoReplacementTemplate string, skipLinks bool) string {
 	return urlMatcher.ReplaceAllStringFunc(input, func(match string) string {
 		switch {
@@ -337,7 +298,7 @@ func renderQuotesAsHTML(ctx context.Context, input string, usingTelegramInstantV
 		defer cancel()
 		wg.Add(1)
 		go func() {
-			event, _, err := getEvent(ctx, nip19)
+			event, _, err := getEvent(ctx, nip19, false)
 			if err == nil {
 				quotedEvent := basicFormatting(submatches[0], false, usingTelegramInstantView, false)
 
@@ -425,22 +386,6 @@ func previewNotesFormatting(input string) string {
 	return strings.Join(processedLines, "<br/>")
 }
 
-func unique(strSlice []string) []string {
-	if len(strSlice) == 0 {
-		return strSlice
-	}
-
-	slices.Sort(strSlice)
-	j := 0
-	for i := 1; i < len(strSlice); i++ {
-		if strSlice[j] != strSlice[i] {
-			j++
-			strSlice[j] = strSlice[i]
-		}
-	}
-	return strSlice[:j+1]
-}
-
 func trimProtocolAndEndingSlash(relay string) string {
 	relay = strings.TrimPrefix(relay, "wss://")
 	relay = strings.TrimPrefix(relay, "ws://")
@@ -462,26 +407,6 @@ func limitAt[V any](list []V, n int) []V {
 		return list
 	}
 	return list[0:n]
-}
-
-func humanDate(createdAt nostr.Timestamp) string {
-	ts := createdAt.Time()
-	now := time.Now()
-	if ts.Before(now.AddDate(0, -9, 0)) {
-		return ts.UTC().Format("02 Jan 2006")
-	} else if ts.Before(now.AddDate(0, 0, -6)) {
-		return ts.UTC().Format("Jan _2")
-	} else {
-		return ts.UTC().Format("Mon, Jan _2 15:04 UTC")
-	}
-}
-
-func getRandomRelay() string {
-	if serial == 0 {
-		serial = rand.Intn(len(sys.FallbackRelays))
-	}
-	serial = (serial + 1) % len(sys.FallbackRelays)
-	return sys.FallbackRelays[serial]
 }
 
 func maxIndex(slice []int) int {
@@ -513,6 +438,10 @@ func getUTCOffset(loc *time.Location) string {
 }
 
 func toJSONHTML(evt *nostr.Event) template.HTML {
+	if evt == nil {
+		return ""
+	}
+
 	tagsHTML := "["
 	for t, tag := range evt.Tags {
 		tagsHTML += "\n    ["
@@ -597,4 +526,14 @@ func isValidShortcode(s string) bool {
 		}
 	}
 	return true
+}
+
+func appendUnique[I comparable](arr []I, item ...I) []I {
+	for _, item := range item {
+		if slices.Contains(arr, item) {
+			return arr
+		}
+		arr = append(arr, item)
+	}
+	return arr
 }

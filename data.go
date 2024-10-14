@@ -40,9 +40,8 @@ type Data struct {
 
 func grabData(ctx context.Context, code string) (Data, error) {
 	// code can be a nevent or naddr, in which case we try to fetch the associated event
-	event, relays, err := getEvent(ctx, code)
+	event, relays, err := getEvent(ctx, code, true)
 	if err != nil {
-		log.Warn().Err(err).Str("code", code).Msg("failed to fetch event for code")
 		return Data{}, fmt.Errorf("error fetching event: %w", err)
 	}
 
@@ -69,7 +68,7 @@ func grabData(ctx context.Context, code string) (Data, error) {
 	data.neventNaked, _ = nip19.EncodeEvent(event.ID, nil, event.PubKey)
 	data.naddr = ""
 	data.naddrNaked = ""
-	data.createdAt = time.Unix(int64(event.CreatedAt), 0).Format("2006-01-02 15:04:05")
+	data.createdAt = time.Unix(int64(event.CreatedAt), 0).Format("2006-01-02 15:04:05 MST")
 
 	if event.Kind >= 30000 && event.Kind < 40000 {
 		if d := event.Tags.GetFirst([]string{"d", ""}); d != nil {

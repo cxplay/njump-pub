@@ -76,21 +76,28 @@ func (ee EnhancedEvent) getParentNevent() string {
 			if (len(*replyTag) > 2) && ((*replyTag)[2] != "") {
 				relays = []string{(*replyTag)[2]}
 			}
-			eventId := (*replyTag)[1]
-			if (*replyTag)[0] == "a" { // Reply to a ndaddr event
-				eventId = strings.Split(eventId, ":")[1]
-				kind, _ := strconv.Atoi(strings.Split((*replyTag)[1], ":")[0])
-				identifier := strings.Split((*replyTag)[1], ":")[2]
+			if (*replyTag)[0] == "a" { // reply to a ndaddr event
+				spl := strings.Split((*replyTag)[1], ":")
+				if len(spl) != 3 {
+					return ""
+				}
+				author := spl[1]
+				kind, _ := strconv.Atoi(spl[0])
+				identifier := spl[2]
+
 				var relays []string
 				if (len(*replyTag) > 2) && ((*replyTag)[2] != "") {
 					relays = []string{(*replyTag)[2]}
 				}
+
 				parentNevent, _ = nip19.EncodeEntity(
-					eventId,
+					author,
 					kind,
 					identifier,
-					relays)
+					relays,
+				)
 			} else {
+				eventId := (*replyTag)[1]
 				parentNevent, _ = nip19.EncodeEvent(eventId, relays, "")
 			}
 		}
@@ -195,7 +202,7 @@ func (ee EnhancedEvent) Nevent() string {
 }
 
 func (ee EnhancedEvent) CreatedAtStr() string {
-	return time.Unix(int64(ee.Event.CreatedAt), 0).Format("2006-01-02 15:04:05")
+	return time.Unix(int64(ee.Event.CreatedAt), 0).Format("2006-01-02 15:04:05 MST")
 }
 
 func (ee EnhancedEvent) ModifiedAtStr() string {
