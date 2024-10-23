@@ -1,0 +1,23 @@
+{
+  "everything": [
+    "wss://relay.westernbtc.com",
+    "wss://relay.cxplay.org",
+    "wss://relay.damus.io",
+    "wss://us.nostr.wine",
+    "wss://relay.mostr.pub",
+    "wss://relay.primal.net",
+    "wss://relay.momostr.pink"
+  ],
+  "profiles": [
+    "wss://relay.primal.net",
+    "wss://relay.damus.io",
+    "wss://purplepag.es",
+    "wss://relay.nostr.band",
+    "wss://relay.noswhere.com",
+    "wss://relay.nos.social"
+  ],
+  "justIds": [
+    "wss://cache2.primal.net/v1",
+    "wss://relay.noswhere.com"
+  ]
+}
